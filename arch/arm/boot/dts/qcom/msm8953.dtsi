@@ -53,12 +53,12 @@
 		other_ext_mem: other_ext_region@0 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0x0 0x84A00000 0x0 0x1E00000>;
+			reg = <0x0 0x85b00000 0x0 0xd00000>;
 		};
 
 		modem_mem: modem_region@0 {
 			compatible = "removed-dma-pool";
-			no-map;
+			no-map-fixup;
 			reg = <0x0 0x86c00000 0x0 0x6a00000>;
 		};
 
@@ -552,7 +552,7 @@
 
 		qcom,vdd-gfx-rstr {
 			qcom,vdd-rstr-reg = "vdd-gfx";
-			qcom,levels = <5 7 7>; /* Nominal, Turbo, Turbo */
+			qcom,levels = <5 7 8>; /* Nominal, Turbo, Turbo+ */
 			qcom,min-level = <1>; /* No Request */
 		};
 
@@ -569,6 +569,8 @@
 		qcom,bcl-framework-interface;
 		qcom,bcl-freq-control-list = <&CPU0 &CPU1 &CPU2 &CPU3
 						&CPU4 &CPU5 &CPU6 &CPU7>;
+		qcom,bcl-hotplug-list = <&CPU4 &CPU5 &CPU6 &CPU7>;
+ 		qcom,bcl-soc-hotplug-list = <&CPU4 &CPU5 &CPU6 &CPU7>;				
 		qcom,ibat-monitor {
 			qcom,low-threshold-uamp = <3400000>;
 			qcom,high-threshold-uamp = <4200000>;
@@ -583,8 +585,8 @@
 	qcom,msm-core@a0000 {
 		compatible = "qcom,apss-core-ea";
 		reg = <0xa0000 0x1000>;
-		qcom,low-hyst-temp = <100>;
-		qcom,high-hyst-temp = <100>;
+		qcom,low-hyst-temp = <10>;
+		qcom,high-hyst-temp = <5>;
 
 		ea0: ea0 {
 			sensor = <&sensor_information9>;
@@ -867,9 +869,8 @@
 
 	clock_gcc: qcom,gcc@1800000 {
 		compatible = "qcom,gcc-8953";
-		reg = <0x1800000 0x80000>,
-			<0x00a4124 0x08>;
-		reg-names = "cc_base", "efuse";
+		reg = <0x1800000 0x80000>;
++		reg-names = "cc_base";	vdd_dig-supply = <&pm8953_s2_level>;
 		vdd_dig-supply = <&pm8953_s2_level>;
 		#clock-cells = <1>;
 	};
@@ -906,10 +907,11 @@
 			< 133330000   1 >,  /* Min SVS   */
 			< 216000000   2 >,  /* Low SVS   */
 			< 320000000   3 >,  /* SVS       */
-			< 400000000   4 >,  /* SVS Plus  */
-			< 510000000   5 >,  /* NOM       */
-			< 560000000   6 >,  /* Nom Plus  */
-			< 650000000   7 >;  /* Turbo     */
+			< 358000000   4 >,  /* SVS Plus  */
+			< 434000000   5 >,  /* NOM       */
+			< 542000000   6 >,  /* Nom Plus  */
+			< 630000000   7 >,  /* Turbo     */
+			< 700000000   8 >;  /* Turbo Plus*/
 		#clock-cells = <1>;
 	};
 
@@ -921,7 +923,7 @@
 			<0xb111050  0x08>,
 			<0xb011050  0x08>,
 			<0xb1d1050  0x08>,
-			 <0x00a4124 0x08>;
+			<0x00a4124 0x08>;
 		reg-names = "rcgwr-c0-base", "rcgwr-c1-base",
 			    "c0-pll", "c0-mux", "c1-mux",
 			    "cci-mux", "efuse";
