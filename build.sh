@@ -1,83 +1,73 @@
-#!/bin/sh
+#!/bin/bash
 
-ROOT_PATH=$PWD
+export ARCH=arm64
 
-export KBUILD_BUILD_USER=adesh15
-export KBUILD_BUILD_HOST=reactor
+ROOT_DIR=$(pwd)
+OUT_DIR=$ROOT_DIR/out
+BUILDING_DIR=$OUT_DIR/kernel_obj
+
+JOB_NUMBER=`grep processor /proc/cpuinfo|wc -l`
+DATE=`date +%m-%d-%H:%M`
+
+ZIP_DIR=$ROOT_DIR/zip
+TEMP_DIR=$OUT_DIR/temp
+
+# Color Codes
+Black='\e[0;30m'        # Black
+Red='\e[0;31m'          # Red
+Green='\e[0;32m'        # Green
+Yellow='\e[0;33m'       # Yellow
+Blue='\e[0;34m'         # Blue
+Purple='\e[0;35m'       # Purple
+Cyan='\e[0;36m'         # Cyan
+White='\e[0;37m'        # White
+
+# Tweakable options
 export ARCH=arm64
 export SUBARCH=arm64
-export IMAGE="out/arch/${ARCH}/boot/Image.gz-dtb";
-export ZIPDIR="/home/adesikha15/zip";
+export KBUILD_BUILD_USER="PaLoDa"
+export KBUILD_BUILD_HOST="LsDtY"
+export CROSS_COMPILE=/home/paloda/cocina/aarch64-cortex_a53-linux-gnueabi-gcc-7/bin/aarch64-cortex_a53-linux-gnueabi-
+DEFCONFIG=mido_defconfig
 
-rm -rf $ZIPDIR/*.zip
+# Compilation Scripts Are Below
 
-if [ "$CLANG" == "yes" ]
-then
-export CLANG_PATH=/home/adesikha15/clang/clang-4679922/bin
-export PATH=${CLANG_PATH}:${PATH}
-export CLANG_TRIPLE=aarch64-linux-gnu-
-export TCHAIN_PATH="/home/adesikha15/gcc-4.9/bin/aarch64-linux-android-"
-export CROSS_COMPILE="${CCACHE} ${TCHAIN_PATH}"
-export CLANG_TCHAIN="/home/adesikha15/clang/clang-4679922/bin/clang"
-export KBUILD_COMPILER_STRING="$(${CLANG_TCHAIN} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
-export FINAL_ZIP="${ZIPDIR}/Feather-mido-clang-$(date +"%Y%m%d")-$(date +"%H%M%S").zip"
-
-make clean O=out/
-make mrproper O=out/
-make CC=clang mido_defconfig O=out/
-else
-TOOLCHAIN=/home/adesikha15/toolchain/bin/aarch64-linux-
-export CROSS_COMPILE="${CCACHE} ${TOOLCHAIN}"
-export FINAL_ZIP="${ZIPDIR}/Feather-mido-$(date +"%Y%m%d")-$(date +"%H%M%S").zip"
-
-make clean O=out/
-make mrproper O=out/
-make mido_defconfig O=out/
-fi
-
-#TG send message function
-#export CHAT_ID="-318772221 $CHAT_ID";
-export CHAT_ID="-1001163172007 $CHAT_ID";
-
-function sendTG()
+FUNC_PRINT()
 {
-for f in $CHAT_ID
-do
-bash ~/reactor/send_tg.sh $f $@
-done
+echo -e "$Cyan***********************************************"
+echo "         Compiling PaLoDa Kernel             "
+echo -e "***********************************************$nocol"
 }
 
-START=$(date +"%s");
-if [ "$CLANG" == "yes" ]
-then
-sendTG "Starting $(date +%Y%m%d) Feather Clang [build]($BUILD_URL)."
-make CC=clang -j16 O=out/
-else
-sendTG "Starting $(date +%Y%m%d) Feather [build]($BUILD_URL)."
-make -j8 O=out/
-fi
-END=$(date +"%s")
-DIFF=$((END - START))
-echo "Build took $((DIFF / 60)) minute(s) and $((DIFF % 60)) seconds.";
+FUNC_COMPILE_KERNEL()
+{
+		FUNC_PRINT "Start Compiling Kernel"
+		make -C $ROOT_DIR O=$BUILDING_DIR $DEFCONFIG 
+		make -C $ROOT_DIR O=$BUILDING_DIR -j$JOB_NUMBER
+		FUNC_PRINT "Finish Compiling Kernel"
+}
 
-if [ ! -f "${IMAGE}" ]; then
-    echo -e "Build failed :P";
-    sendTG "KERNEL BUILD FAILED, RIP in pieces.";
-    sendTG "@Adesh15, check console fast.";
-    exit 1;
-else
-    echo "Build Succesful!";
-    echo "Copying kernel image";
-    rm "$ZIPDIR/Image.gz-dtb";
-    cp -v "${IMAGE}" "${ZIPDIR}/";
-    cd "${ZIPDIR}"
-    zip -r9 "${FINAL_ZIP}" *;
-    size=$(du -sh $FINAL_ZIP | awk '{print $1}')
-    fileid=$(~/gdrive upload --parent 1pJw20jsAAna1ziqjH7xUJoJaMbxPcqpp ${FINAL_ZIP} | tail -1 | awk '{print $2}')
-    sendTG "[Google Drive](https://drive.google.com/uc?id=$fileid&export=download)"
-    sendTG "FileSize - $size"
-    sendTG "Kernal lelo frandz";
-    sendTG "${POST_MESSAGE}";
-fi
+FUNC_PACK()
+{
+		FUNC_PRINT "Start Packing"
+		cp -r $ZIP_DIR/* $TEMP_DIR
+		cp $BUILDING_DIR/arch/arm64/boot/Image.gz-dtb $TEMP_DIR/zImage-dtb
+        mkdir $TEMP_DIR/modules
+        find . -type f -name "wlan.ko" | xargs cp -t $TEMP_DIR/modules
+        find $TEMP_DIR -iname "wlan.ko" -exec /home/paloda/cocina/aarch64-cortex_a53-linux-gnueabi-gcc-7/bin/aarch64-cortex_a53-linux-gnueabi-strip- --strip-debug {} \;
+		cd $TEMP_DIR
+		zip -r9 PaLoDa-v1.5.zip ./*
+		mv PaLoDa-v1.5.zip $OUT_DIR/PaLoDa-v1.5.zip-$DATE.zip
+		cd $ROOT_DIR
+		FUNC_PRINT "$Green Finish Packing $nocol"
+}
 
-cd $ROOT_PATH
+START_TIME=`date +%s`
+FUNC_COMPILE_KERNEL
+FUNC_PACK
+END_TIME=`date +%s`
+
+echo -e "$Yellow***********************************************"
+echo "let ELAPSED_TIME=$END_TIME-$START_TIME         "
+echo "Total compile time is $ELAPSED_TIME minutes"
+echo -e "***********************************************$nocol"
